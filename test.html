@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeTheme - Test Preview</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-container">
+        <div class="background-image" id="backgroundImage"></div>
+        <div class="overlay"></div>
+    </div>
+
+    <div class="container">
+        <!-- Weather Section -->
+        <div class="weather-section" id="weatherSection">
+            <div class="weather-info">
+                <div class="weather-icon" id="weatherIcon">
+                    <i class="fas fa-cloud"></i>
+                </div>
+                <div class="weather-details">
+                    <div class="temperature" id="temperature">--°C</div>
+                    <div class="weather-description" id="weatherDescription">Loading...</div>
+                    <div class="location" id="location">Getting location...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Greeting -->
+            <div class="greeting" id="greeting">Good Morning</div>
+            
+            <!-- Time and Date -->
+            <div class="time-section">
+                <div class="time" id="time">12:00</div>
+                <div class="date" id="date">Monday, January 1, 2024</div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-section">
+                <div class="search-container">
+                    <div class="search-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="Search Google..." class="search-input">
+                    <button class="search-button" id="searchButton">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Background Change Button -->
+        <div class="background-controls">
+            <button class="change-bg-btn" id="changeBgBtn">
+                <i class="fas fa-image"></i>
+                <span>Change Background</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <style>
+        /* Additional styles for test page */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .test-notice {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+    </style>
+    
+    <div class="test-notice">
+        🧪 Test Preview - This is how your new tab will look!
+    </div>
+</body>
+</html> 
