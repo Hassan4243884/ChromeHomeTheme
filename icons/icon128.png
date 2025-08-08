@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeTheme - Test Preview</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-container">
+        <div class="background-image" id="backgroundImage"></div>
+        <div class="overlay"></div>
+    </div>
+
+    <div class="container">
+        <!-- Left Bookmark Sidebar -->
+        <aside class="bookmark-sidebar" id="bookmarkSidebar" aria-label="Bookmarks">
+            <div class="bm-header">
+                <div class="bm-title"><i class="fas fa-bookmark"></i><span>Bookmarks</span></div>
+                <div class="bm-actions">
+                    <button class="bm-icon-btn" id="addCategoryBtn" title="Add category" aria-label="Add category"><i class="fas fa-folder-plus"></i></button>
+                    <button class="bm-icon-btn" id="addBookmarkBtn" title="Add bookmark" aria-label="Add bookmark"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+            <div class="bm-category-select">
+                <select id="bmCategorySelect" class="bm-select" aria-label="Select category"></select>
+            </div>
+            <div class="bm-grid" id="bmGrid" aria-live="polite"></div>
+        </aside>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Time and Date on top -->
+            <div class="time-section">
+                <div class="time" id="time">12:00:00</div>
+                <div class="date" id="date">Monday, January 1, 2024</div>
+            </div>
+
+            <!-- Name Greeting -->
+            <div class="name-greeting" id="nameGreeting">Hey, Muhammad!</div>
+
+            <!-- Weather Block -->
+            <a id="weather" class="weather-card" rel="noreferrer">
+                <div id="description" data-hide="weatherdesc">
+                    <p id="current">
+                        <span id="current-desc">Loading... </span>
+                        <span id="current-temp">It is currently --°</span>
+                    </p>
+                    <p id="forecast">with a high of --° today. </p>
+                </div>
+
+                <div id="tempContainer" data-hide="weathericon">
+                    <span id="weather-icon" data-daytime="day" data-condition="clear"></span>
+                    <p id="temp-now">--°</p>
+                </div>
+            </a>
+
+            <!-- Search Bar -->
+            <div class="search-section">
+                <div class="search-container">
+                    <div class="search-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="Search Google..." class="search-input">
+                    <button class="search-button" id="searchButton">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Enhanced Greeting Message -->
+            <div class="enhanced-greeting" id="enhancedGreeting">
+                <div class="greeting-message" id="greetingMessage">Have a wonderful day ahead!</div>
+                <div class="greeting-subtitle" id="greetingSubtitle">Make today amazing</div>
+            </div>
+        </div>
+
+        <!-- Corner Buttons -->
+        <div class="corner-buttons">
+            <button class="blur-btn" id="blurBtn">
+                <i class="fas fa-adjust"></i>
+                <span>Blur</span>
+                <div class="blur-slider-container">
+                    <label for="blurSlider">Blur:</label>
+                    <input type="range" id="blurSlider" min="0" max="20" value="0" class="blur-slider">
+                    <span id="blurValue">0px</span>
+                </div>
+            </button>
+            <button class="change-bg-btn-corner" id="changeBgBtnCorner">
+                <i class="fas fa-image"></i>
+                <span>Background</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <style>
+        /* Additional styles for test page */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .test-notice {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+    </style>
+    
+</body>
+</html> 

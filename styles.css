@@ -570,7 +570,7 @@ body {
   top: 0;
   left: 0;
   height: 100vh;
-  width: 260px;
+  width: 360px;
   padding: 1rem;
   /* background: rgba(255, 255, 255, 0.08); */
   /* backdrop-filter: blur(18px); */
@@ -706,6 +706,32 @@ body {
 
 .bookmark-sidebar .bm-drag-handle {
   color: rgba(255, 255, 255, 0.55);
+}
+
+.bookmark-sidebar .bm-actions-inline {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.bookmark-sidebar .bm-small-btn,
+.bm-icon-btn-sm {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bookmark-sidebar .bm-small-btn:hover,
+.bm-icon-btn-sm:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .bookmark-sidebar .bm-item.dragging {

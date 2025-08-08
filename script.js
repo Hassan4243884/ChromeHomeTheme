@@ -299,6 +299,8 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
   const addBookmarkBtn = document.getElementById("addBookmarkBtn");
   const categorySelect = document.getElementById("bmCategorySelect");
   const grid = document.getElementById("bmGrid");
+  const hasChromeStorage =
+    typeof chrome !== "undefined" && chrome.storage && chrome.storage.local;
 
   const LS_CATEGORIES_KEY = "bm_categories_v1";
   const LS_BOOKMARKS_KEY = "bm_bookmarks_v1"; // object: { [category]: Bookmark[] }
@@ -306,10 +308,41 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
 
   /** @typedef {{ id: string; title: string; url: string; iconUrl?: string }} Bookmark */
 
-  function loadCategories() {
+  async function storageGet(keys) {
+    if (hasChromeStorage) {
+      return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+    }
+    const result = {};
+    (Array.isArray(keys) ? keys : [keys]).forEach((k) => {
+      result[k] = localStorage.getItem(k);
+    });
+    return result;
+  }
+
+  async function storageSet(obj) {
+    if (hasChromeStorage) {
+      return new Promise((resolve) => chrome.storage.local.set(obj, resolve));
+    }
+    Object.keys(obj).forEach((k) => {
+      const v = obj[k];
+      if (typeof v === "string") {
+        localStorage.setItem(k, v);
+      } else {
+        localStorage.setItem(k, JSON.stringify(v));
+      }
+    });
+  }
+
+  async function loadCategories() {
     try {
-      const raw = localStorage.getItem(LS_CATEGORIES_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
+      const data = await storageGet([LS_CATEGORIES_KEY]);
+      let raw = data[LS_CATEGORIES_KEY];
+      if (!raw) {
+        // raw may already be an array in chrome.storage
+        const data2 = await storageGet(LS_CATEGORIES_KEY);
+        raw = data2[LS_CATEGORIES_KEY];
+      }
+      const parsed = Array.isArray(raw) ? raw : raw ? JSON.parse(raw) : [];
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       return ["General"];
     } catch (e) {
@@ -317,39 +350,49 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
     }
   }
 
-  function saveCategories(categories) {
-    localStorage.setItem(LS_CATEGORIES_KEY, JSON.stringify(categories));
+  async function saveCategories(categories) {
+    await storageSet({ [LS_CATEGORIES_KEY]: categories });
   }
 
-  function loadBookmarksMap() {
+  async function loadBookmarksMap() {
     try {
-      const raw = localStorage.getItem(LS_BOOKMARKS_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
+      const data = await storageGet([LS_BOOKMARKS_KEY]);
+      let raw = data[LS_BOOKMARKS_KEY];
+      if (!raw) {
+        const data2 = await storageGet(LS_BOOKMARKS_KEY);
+        raw = data2[LS_BOOKMARKS_KEY];
+      }
+      const parsed =
+        raw && typeof raw === "object" ? raw : raw ? JSON.parse(raw) : {};
       return parsed && typeof parsed === "object" ? parsed : {};
     } catch (e) {
       return {};
     }
   }
 
-  function saveBookmarksMap(map) {
-    localStorage.setItem(LS_BOOKMARKS_KEY, JSON.stringify(map));
+  async function saveBookmarksMap(map) {
+    await storageSet({ [LS_BOOKMARKS_KEY]: map });
   }
 
-  function getSelectedCategory() {
-    return localStorage.getItem(LS_SELECTED_CATEGORY_KEY);
+  async function getSelectedCategory() {
+    const data = await storageGet([LS_SELECTED_CATEGORY_KEY]);
+    const v = data[LS_SELECTED_CATEGORY_KEY];
+    if (typeof v === "string") return v;
+    return v || null;
   }
 
-  function setSelectedCategory(cat) {
-    localStorage.setItem(LS_SELECTED_CATEGORY_KEY, cat);
+  async function setSelectedCategory(cat) {
+    await storageSet({ [LS_SELECTED_CATEGORY_KEY]: cat });
   }
 
   function ensureCategoryExists(map, category) {
     if (!map[category]) map[category] = [];
   }
 
-  function renderCategories() {
-    const categories = loadCategories();
-    const selected = getSelectedCategory() || categories[0];
+  async function renderCategories() {
+    const categories = await loadCategories();
+    const storedSelected = await getSelectedCategory();
+    const selected = storedSelected || categories[0];
     categorySelect.innerHTML = "";
     for (const cat of categories) {
       const opt = document.createElement("option");
@@ -358,7 +401,7 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
       if (cat === selected) opt.selected = true;
       categorySelect.appendChild(opt);
     }
-    setSelectedCategory(selected);
+    await setSelectedCategory(selected);
   }
 
   function faviconFor(url) {
@@ -391,12 +434,39 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
     label.className = "bm-label";
     label.textContent = bookmark.title || bookmark.url;
 
+    const actions = document.createElement("span");
+    actions.className = "bm-actions-inline";
+    const editBtn = document.createElement("button");
+    editBtn.className = "bm-small-btn";
+    editBtn.title = "Edit bookmark";
+    editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+    const delBtn = document.createElement("button");
+    delBtn.className = "bm-small-btn";
+    delBtn.title = "Delete bookmark";
+    delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      void editBookmark(index);
+    });
+
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      void deleteBookmark(index);
+    });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
     const dragHandle = document.createElement("span");
     dragHandle.className = "bm-drag-handle";
     dragHandle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
 
     item.appendChild(iconWrap);
     item.appendChild(label);
+    item.appendChild(actions);
     item.appendChild(dragHandle);
 
     // Open on click (ignore drag)
@@ -441,28 +511,30 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
     return item;
   }
 
-  function renderBookmarks() {
-    const category = getSelectedCategory() || loadCategories()[0];
-    const map = loadBookmarksMap();
-    ensureCategoryExists(map, category);
-    const list = map[category];
+  async function renderBookmarks() {
+    const categories = await loadCategories();
+    const selected = (await getSelectedCategory()) || categories[0];
+    const map = await loadBookmarksMap();
+    ensureCategoryExists(map, selected);
+    const list = map[selected];
     grid.innerHTML = "";
     list.forEach((bm, idx) => grid.appendChild(createBookmarkElement(bm, idx)));
   }
 
-  function reorderBookmarks(fromIndex, toIndex) {
-    const category = getSelectedCategory() || loadCategories()[0];
-    const map = loadBookmarksMap();
+  async function reorderBookmarks(fromIndex, toIndex) {
+    const categories = await loadCategories();
+    const category = (await getSelectedCategory()) || categories[0];
+    const map = await loadBookmarksMap();
     ensureCategoryExists(map, category);
     const list = map[category];
     const [moved] = list.splice(fromIndex, 1);
     list.splice(toIndex, 0, moved);
-    saveBookmarksMap(map);
-    renderBookmarks();
+    await saveBookmarksMap(map);
+    await renderBookmarks();
   }
 
-  function addCategory() {
-    const categories = loadCategories();
+  async function addCategory() {
+    const categories = await loadCategories();
     const name = (prompt("New category name:") || "").trim();
     if (!name) return;
     if (categories.includes(name)) {
@@ -470,13 +542,13 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
       return;
     }
     categories.push(name);
-    saveCategories(categories);
-    const map = loadBookmarksMap();
+    await saveCategories(categories);
+    const map = await loadBookmarksMap();
     ensureCategoryExists(map, name);
-    saveBookmarksMap(map);
-    setSelectedCategory(name);
-    renderCategories();
-    renderBookmarks();
+    await saveBookmarksMap(map);
+    await setSelectedCategory(name);
+    await renderCategories();
+    await renderBookmarks();
   }
 
   function normalizeTitle(url, provided) {
@@ -489,7 +561,7 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
     }
   }
 
-  function addBookmark() {
+  async function addBookmark() {
     const url = (prompt("Bookmark URL:") || "").trim();
     if (!url) return;
     const title = (prompt("Display name (optional):") || "").trim();
@@ -499,28 +571,190 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
       url,
       iconUrl: faviconFor(url),
     };
-    const category = getSelectedCategory() || loadCategories()[0];
-    const map = loadBookmarksMap();
+    const categories = await loadCategories();
+    const category = (await getSelectedCategory()) || categories[0];
+    const map = await loadBookmarksMap();
     ensureCategoryExists(map, category);
     map[category].push(bm);
-    saveBookmarksMap(map);
-    renderBookmarks();
+    await saveBookmarksMap(map);
+    await renderBookmarks();
+  }
+
+  async function editBookmark(index) {
+    const categories = await loadCategories();
+    const category = (await getSelectedCategory()) || categories[0];
+    const map = await loadBookmarksMap();
+    ensureCategoryExists(map, category);
+    const list = map[category];
+    const bm = list[index];
+    if (!bm) return;
+    const newTitle = (prompt("Edit name:", bm.title || "") || "").trim();
+    const newUrl = (prompt("Edit URL:", bm.url || "") || "").trim();
+    if (!newUrl) return;
+    bm.title = newTitle || normalizeTitle(newUrl, newTitle);
+    bm.url = newUrl;
+    bm.iconUrl = faviconFor(newUrl);
+    list[index] = bm;
+    await saveBookmarksMap(map);
+    await renderBookmarks();
+  }
+
+  async function deleteBookmark(index) {
+    const categories = await loadCategories();
+    const category = (await getSelectedCategory()) || categories[0];
+    const map = await loadBookmarksMap();
+    ensureCategoryExists(map, category);
+    const list = map[category];
+    const bm = list[index];
+    if (!bm) return;
+    const ok = confirm(`Delete bookmark "${bm.title || bm.url}"?`);
+    if (!ok) return;
+    list.splice(index, 1);
+    await saveBookmarksMap(map);
+    await renderBookmarks();
   }
 
   // Init
-  function initBookmarksUI() {
-    renderCategories();
-    renderBookmarks();
+  async function migrateIfNeeded() {
+    if (!hasChromeStorage) return;
+    const current = await storageGet([
+      LS_CATEGORIES_KEY,
+      LS_BOOKMARKS_KEY,
+      LS_SELECTED_CATEGORY_KEY,
+    ]);
+    const isEmpty = !current[LS_CATEGORIES_KEY] && !current[LS_BOOKMARKS_KEY];
+    if (!isEmpty) return;
+    try {
+      const lsCategoriesRaw = localStorage.getItem(LS_CATEGORIES_KEY);
+      const lsBookmarksRaw = localStorage.getItem(LS_BOOKMARKS_KEY);
+      const lsSelected = localStorage.getItem(LS_SELECTED_CATEGORY_KEY);
+      const categories = lsCategoriesRaw ? JSON.parse(lsCategoriesRaw) : null;
+      const map = lsBookmarksRaw ? JSON.parse(lsBookmarksRaw) : null;
+      const toSet = {};
+      if (categories) toSet[LS_CATEGORIES_KEY] = categories;
+      if (map) toSet[LS_BOOKMARKS_KEY] = map;
+      if (lsSelected) toSet[LS_SELECTED_CATEGORY_KEY] = lsSelected;
+      if (Object.keys(toSet).length > 0) await storageSet(toSet);
+    } catch (e) {
+      // ignore
+    }
+  }
 
-    categorySelect.addEventListener("change", () => {
-      setSelectedCategory(categorySelect.value);
-      renderBookmarks();
+  async function initBookmarksUI() {
+    await migrateIfNeeded();
+    await renderCategories();
+    await renderBookmarks();
+
+    categorySelect.addEventListener("change", async () => {
+      await setSelectedCategory(categorySelect.value);
+      await renderBookmarks();
     });
 
-    addCategoryBtn.addEventListener("click", addCategory);
-    addBookmarkBtn.addEventListener("click", addBookmark);
+    addCategoryBtn.addEventListener("click", () => void addCategory());
+    addBookmarkBtn.addEventListener("click", () => void addBookmark());
+
+    // Add delete-category button next to the select (injected, no HTML edits required)
+    const selectRow = categorySelect && categorySelect.parentElement;
+    if (selectRow && !selectRow.querySelector("#deleteCategoryBtn")) {
+      const delCatBtn = document.createElement("button");
+      delCatBtn.id = "deleteCategoryBtn";
+      delCatBtn.className = "bm-icon-btn-sm";
+      delCatBtn.title = "Delete current category";
+      delCatBtn.innerHTML = '<i class="fas fa-folder-minus"></i>';
+      delCatBtn.addEventListener("click", () => void deleteCurrentCategory());
+      selectRow.appendChild(delCatBtn);
+
+      // Open all in new window button
+      const openCatBtn = document.createElement("button");
+      openCatBtn.id = "openCategoryBtn";
+      openCatBtn.className = "bm-icon-btn-sm";
+      openCatBtn.title = "Open all bookmarks in a new window";
+      openCatBtn.style.marginLeft = "0.35rem";
+      openCatBtn.innerHTML = '<i class="fas fa-window-restore"></i>';
+      openCatBtn.addEventListener(
+        "click",
+        () => void openCurrentCategoryInNewWindow()
+      );
+      selectRow.appendChild(openCatBtn);
+    }
+  }
+
+  async function deleteCurrentCategory() {
+    const categories = await loadCategories();
+    if (categories.length <= 1) {
+      alert("You must have at least one category.");
+      return;
+    }
+    const current = (await getSelectedCategory()) || categories[0];
+    const ok = confirm(
+      `Delete category "${current}" and all its bookmarks? This cannot be undone.`
+    );
+    if (!ok) return;
+    // Remove category and its bookmarks
+    const newCategories = categories.filter((c) => c !== current);
+    await saveCategories(newCategories);
+    const map = await loadBookmarksMap();
+    if (map && typeof map === "object") {
+      delete map[current];
+      await saveBookmarksMap(map);
+    }
+    const newSelected = newCategories[0];
+    await setSelectedCategory(newSelected);
+    await renderCategories();
+    await renderBookmarks();
+  }
+
+  async function openCurrentCategoryInNewWindow() {
+    const categories = await loadCategories();
+    const category = (await getSelectedCategory()) || categories[0];
+    const map = await loadBookmarksMap();
+    ensureCategoryExists(map, category);
+    const list = map[category];
+    const urls = list.map((b) => b.url).filter(Boolean);
+    if (!urls.length) {
+      alert("No bookmarks in this category.");
+      return;
+    }
+    // Use extension APIs if available: create a new window with first tab, then add remaining URLs as tabs
+    if (
+      typeof chrome !== "undefined" &&
+      chrome.windows &&
+      chrome.windows.create &&
+      chrome.tabs &&
+      chrome.tabs.create
+    ) {
+      try {
+        const createdWindow = await new Promise((resolve) =>
+          chrome.windows.create(
+            { url: urls[0], focused: true, state: "maximized" },
+            resolve
+          )
+        );
+        if (createdWindow && createdWindow.id && urls.length > 1) {
+          for (let i = 1; i < urls.length; i++) {
+            await new Promise((resolve) =>
+              chrome.tabs.create(
+                { windowId: createdWindow.id, url: urls[i], active: false },
+                resolve
+              )
+            );
+          }
+        }
+        return;
+      } catch (e) {
+        // Fallback below
+      }
+    }
+    // Fallback (likely test.html): open tabs in current window
+    const proceed = confirm(
+      `Open ${urls.length} tab(s) in this window? Your browser may block pop-ups on non-extension pages.`
+    );
+    if (!proceed) return;
+    urls.forEach((u) => window.open(u, "_blank"));
   }
 
   // Defer to next tick to avoid blocking other initializers
-  window.requestAnimationFrame(initBookmarksUI);
+  window.requestAnimationFrame(() => {
+    void initBookmarksUI();
+  });
 })();

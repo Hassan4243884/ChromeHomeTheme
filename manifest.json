@@ -3,7 +3,7 @@
   "name": "HomeTheme - Custom New Tab",
   "version": "1.0.0",
   "description": "A beautiful custom new tab page with nature backgrounds, clock, weather, and search",
-  "permissions": ["storage", "geolocation"],
+  "permissions": ["storage", "geolocation", "tabs", "windows"],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
