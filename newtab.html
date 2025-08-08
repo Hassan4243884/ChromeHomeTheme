@@ -15,6 +15,20 @@
     </div>
 
     <div class="container">
+        <!-- Left Bookmark Sidebar -->
+        <aside class="bookmark-sidebar" id="bookmarkSidebar" aria-label="Bookmarks">
+            <div class="bm-header">
+                <div class="bm-title"><i class="fas fa-bookmark"></i><span>Bookmarks</span></div>
+                <div class="bm-actions">
+                    <button class="bm-icon-btn" id="addCategoryBtn" title="Add category" aria-label="Add category"><i class="fas fa-folder-plus"></i></button>
+                    <button class="bm-icon-btn" id="addBookmarkBtn" title="Add bookmark" aria-label="Add bookmark"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+            <div class="bm-category-select">
+                <select id="bmCategorySelect" class="bm-select" aria-label="Select category"></select>
+            </div>
+            <div class="bm-grid" id="bmGrid" aria-live="polite"></div>
+        </aside>
         <!-- Main Content -->
         <div class="main-content">
             <!-- Time and Date on top -->
