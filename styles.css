@@ -114,21 +114,26 @@ body {
   align-items: center;
   justify-content: center;
   flex: 1;
-  gap: 2rem;
+  gap: 1.2rem;
 }
 
-.greeting {
+.name-greeting {
   font-size: 2.5rem;
-  font-weight: 300;
-  color: #fff;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.9);
   text-align: center;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
   animation: fadeInUp 1s ease-out;
+  margin-top: 1rem;
 }
 
 .time-section {
   text-align: center;
   animation: fadeInUp 1s ease-out 0.2s both;
+  margin-bottom: 0.25rem;
+  position: absolute;
+  top: 100px;
+  /* left: 2rem; */
 }
 
 .time {
@@ -145,6 +150,53 @@ body {
   color: rgba(255, 255, 255, 0.8);
   font-weight: 400;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Weather Card */
+#weather.weather-card {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 1.25rem;
+  /* border: 1px solid rgba(255, 255, 255, 0.2); */
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 30px;
+  font-weight: bold;
+  text-align: center;
+}
+
+#description #current {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#description #forecast {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#tempContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#weather-icon::before {
+  content: "";
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+#temp-now {
+  font-size: 1.8rem;
+  font-weight: bold;
 }
 
 /* Search Section */
@@ -215,19 +267,37 @@ body {
   transform: scale(1.05);
 }
 
-/* Background Controls */
-.background-controls {
+/* Enhanced Greeting */
+.enhanced-greeting {
+  text-align: center;
+  animation: fadeInUp 1s ease-out 0.5s both;
   position: absolute;
   bottom: 2rem;
-  left: 50%;
+  left: 0;
   transform: translateX(-50%);
-  animation: fadeInUp 1s ease-out 0.6s both;
+  width: 100%;
+  /* padding: 0 2rem; */
+}
+
+.greeting-message {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 400;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.greeting-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 300;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .change-bg-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 50px;
   padding: 1rem 2rem;
   color: #fff;
@@ -242,10 +312,137 @@ body {
 }
 
 .change-bg-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Corner Buttons */
+.corner-buttons {
+  position: fixed;
+  bottom: 2rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2rem;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.blur-btn,
+.change-bg-btn-corner {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50px;
+  padding: 0.8rem 1.5rem;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.blur-btn:hover,
+.change-bg-btn-corner:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.blur-btn {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  position: relative;
+  overflow: visible;
+}
+
+.blur-btn:hover {
+  background: rgba(59, 130, 246, 0.3) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+.blur-slider-container {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-left: 1rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 10;
+}
+
+.blur-btn:hover .blur-slider-container {
+  opacity: 1;
+  visibility: visible;
+}
+
+.blur-slider {
+  width: 80px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: all 0.3s ease;
+}
+
+.blur-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.blur-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.blur-slider-container label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  font-size: 0.8rem;
+  font-family: "Inter", sans-serif;
+}
+
+.blur-slider-container span {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  min-width: 25px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-family: "Inter", sans-serif;
 }
 
 /* Animations */
@@ -285,6 +482,18 @@ body {
     max-width: 90%;
   }
 
+  .enhanced-greeting {
+    margin-top: 0.5rem;
+  }
+
+  .greeting-message {
+    font-size: 1rem;
+  }
+
+  .greeting-subtitle {
+    font-size: 0.8rem;
+  }
+
   .background-controls {
     bottom: 1rem;
   }
@@ -303,11 +512,52 @@ body {
     gap: 1.5rem;
   }
 
-  .greeting {
-    font-size: 1.8rem;
+  .name-greeting {
+    font-size: 2rem;
   }
 
   .time {
     font-size: 3.5rem;
+  }
+
+  .enhanced-greeting {
+    margin-top: 0.5rem;
+  }
+
+  .greeting-message {
+    font-size: 1rem;
+  }
+
+  .greeting-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .background-controls {
+    max-width: 90%;
+    bottom: 1rem;
+  }
+
+  .controls-container {
+    padding: 1rem;
+  }
+
+  .blur-control {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .blur-slider {
+    width: 100px;
+  }
+
+  .corner-buttons {
+    padding: 0 1rem;
+    bottom: 1rem;
+  }
+
+  .blur-btn,
+  .change-bg-btn-corner {
+    padding: 0.6rem 1rem;
+    font-size: 0.7rem;
   }
 }
