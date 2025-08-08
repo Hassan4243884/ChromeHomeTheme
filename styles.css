@@ -748,3 +748,98 @@ body {
     padding: 0.75rem;
   }
 }
+
+/* ===================== */
+/* Prayer/Namaz Section (top-right) */
+/* ===================== */
+.prayer-section {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: 300px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 0.9rem;
+  color: #fff;
+  z-index: 6;
+}
+
+.prayer-section .prayer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.prayer-section .prayer-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.prayer-section .prayer-title i {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.prayer-section .prayer-meta {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.prayer-section .prayer-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  row-gap: 0.4rem;
+  column-gap: 0.5rem;
+  align-items: center;
+}
+
+.prayer-section .prayer-name {
+  font-weight: 500;
+}
+.prayer-section .prayer-time {
+  color: rgba(255, 255, 255, 0.9);
+}
+.prayer-section .prayer-alarm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+}
+
+.prayer-section .prayer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.prayer-section .next-prayer {
+  font-weight: 600;
+}
+.prayer-section .countdown {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+  .prayer-section {
+    right: 0.75rem;
+    top: 0.75rem;
+    width: 260px;
+  }
+}

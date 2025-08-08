@@ -41,6 +41,11 @@ const blurValue = document.getElementById("blurValue");
 // Current background index
 let currentBgIndex = 0;
 
+// Weather location (shared with Prayer module)
+let WEATHER_CITY = "Muzzafarabad";
+let WEATHER_COUNTRY = "Pakistan";
+let WEATHER_COORDS = null; // { lat, lon }
+
 // Initialize the extension
 function init() {
   updateTime();
@@ -162,6 +167,7 @@ function updateWeatherUI(weatherData) {
   const city = weatherData.name;
   const country = weatherData.sys.country;
   const weatherCode = weatherData.weather[0].id;
+  const coords = weatherData.coord || null;
 
   if (currentDescEl) currentDescEl.textContent = `${capitalize(description)}. `;
   if (currentTempEl) currentTempEl.textContent = `It is currently ${temp}°`;
@@ -179,6 +185,27 @@ function updateWeatherUI(weatherData) {
     weatherIconSpan.setAttribute("data-condition", mapCondition(weatherCode));
   }
   if (weatherAnchor) weatherAnchor.title = `${city}, ${country}`;
+
+  // Share weather location globally for other modules (e.g., prayers)
+  WEATHER_CITY = city || null;
+  WEATHER_COUNTRY = country || null;
+  WEATHER_COORDS =
+    coords && typeof coords.lat === "number" && typeof coords.lon === "number"
+      ? { lat: coords.lat, lon: coords.lon }
+      : null;
+
+  try {
+    const evt = new CustomEvent("weatherLocationUpdated", {
+      detail: {
+        city: WEATHER_CITY,
+        country: WEATHER_COUNTRY,
+        coords: WEATHER_COORDS,
+      },
+    });
+    window.dispatchEvent(evt);
+  } catch (e) {
+    // ignore
+  }
 }
 
 function isDaytime(weatherData) {
@@ -756,5 +783,281 @@ BACKGROUND_IMAGES.push(...ALL_BACKGROUND_IMAGES);
   // Defer to next tick to avoid blocking other initializers
   window.requestAnimationFrame(() => {
     void initBookmarksUI();
+  });
+})();
+
+// ==========================
+// Prayer/Namaz Times
+// ==========================
+(function setupPrayerTimes() {
+  const section = document.getElementById("prayerSection");
+  if (!section) return;
+
+  const listEl = document.getElementById("prayerList");
+  const metaEl = document.getElementById("prayerMeta");
+  const nextEl = document.getElementById("nextPrayer");
+  const countdownEl = document.getElementById("prayerCountdown");
+
+  const STORAGE_KEY_ALARMS = "prayer_alarm_prefs_v1";
+  const hasChromeStorage =
+    typeof chrome !== "undefined" && chrome.storage && chrome.storage.local;
+
+  const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+  function storageGet(key) {
+    if (hasChromeStorage) {
+      return new Promise((resolve) => chrome.storage.local.get(key, resolve));
+    }
+    const val = localStorage.getItem(key);
+    return Promise.resolve({ [key]: val ? JSON.parse(val) : undefined });
+  }
+
+  function storageSet(obj) {
+    if (hasChromeStorage) {
+      return new Promise((resolve) => chrome.storage.local.set(obj, resolve));
+    }
+    Object.keys(obj).forEach((k) =>
+      localStorage.setItem(k, JSON.stringify(obj[k]))
+    );
+    return Promise.resolve();
+  }
+
+  function formatTime(date) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function parsePrayerTimeToDate(timeStr, tz) {
+    // timeStr like "05:07"; tz is IANA or browser local
+    const now = new Date();
+    const [h, m] = timeStr.split(":").map((x) => parseInt(x, 10));
+    const d = new Date(now);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+
+  async function fetchPrayerTimesByCoords(lat, lng) {
+    const url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch prayer times");
+    const json = await res.json();
+    return json.data; // contains timings, date, meta
+  }
+
+  async function fetchPrayerTimesByCity(city, country) {
+    const url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
+      city
+    )}&country=${encodeURIComponent(country || "Pakistan")}&method=2`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch prayer times by city");
+    const json = await res.json();
+    return json.data;
+  }
+
+  function renderList(timings, alarmPrefs) {
+    listEl.innerHTML = "";
+    for (const name of PRAYER_ORDER) {
+      const timeStr = timings[name];
+      if (!timeStr) continue;
+      const liName = document.createElement("li");
+      liName.className = "prayer-name";
+      liName.textContent = name;
+
+      const liTime = document.createElement("li");
+      liTime.className = "prayer-time";
+      liTime.textContent = timeStr;
+
+      const liAlarm = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.className = "prayer-alarm";
+      const enabled = !!(alarmPrefs && alarmPrefs[name]);
+      btn.innerHTML = enabled
+        ? '<i class="fas fa-bell"></i>'
+        : '<i class="far fa-bell"></i>';
+      btn.title = enabled ? "Alarm on" : "Alarm off";
+      btn.addEventListener("click", async () => {
+        const next = { ...(alarmPrefs || {}) };
+        next[name] = !enabled;
+        await storageSet({ [STORAGE_KEY_ALARMS]: next });
+        // Re-render
+        renderList(timings, next);
+      });
+      liAlarm.appendChild(btn);
+
+      listEl.appendChild(liName);
+      listEl.appendChild(liTime);
+      listEl.appendChild(liAlarm);
+    }
+  }
+
+  function getNextPrayer(timings) {
+    const now = new Date();
+    for (const name of PRAYER_ORDER) {
+      const t = parsePrayerTimeToDate(timings[name]);
+      if (t > now) return { name, time: t };
+    }
+    // next day: fall back to the first prayer of tomorrow
+    const first = parsePrayerTimeToDate(timings[PRAYER_ORDER[0]]);
+    first.setDate(first.getDate() + 1);
+    return { name: PRAYER_ORDER[0], time: first };
+  }
+
+  let alarmAudio;
+  function getAudio() {
+    if (!alarmAudio) {
+      alarmAudio = new Audio(
+        "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAA..." // tiny silent placeholder, replaced when needed
+      );
+      alarmAudio.loop = false;
+      alarmAudio.volume = 1.0;
+    }
+    return alarmAudio;
+  }
+
+  function playBeep() {
+    // Lightweight beep using Web Audio API
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = 880;
+    o.connect(g);
+    g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.0);
+    o.start();
+    o.stop(ctx.currentTime + 1.05);
+  }
+
+  async function init() {
+    try {
+      // Prefer weather-provided city/coordinates if available
+      let data;
+      if (WEATHER_COORDS && typeof WEATHER_COORDS.lat === "number") {
+        data = await fetchPrayerTimesByCoords(
+          WEATHER_COORDS.lat,
+          WEATHER_COORDS.lon
+        );
+      } else if (WEATHER_CITY) {
+        data = await fetchPrayerTimesByCity(WEATHER_CITY, WEATHER_COUNTRY);
+      } else {
+        metaEl.textContent = "Detecting location…";
+        const pos = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 300000,
+          })
+        );
+        const { latitude, longitude } = pos.coords;
+        data = await fetchPrayerTimesByCoords(latitude, longitude);
+      }
+      const timings = data.timings;
+      metaEl.textContent = data.date.readable;
+
+      const prefsObj = await storageGet(STORAGE_KEY_ALARMS);
+      const alarmPrefs = prefsObj[STORAGE_KEY_ALARMS] || {};
+      renderList(timings, alarmPrefs);
+
+      function updateCountdown() {
+        const { name, time } = getNextPrayer(timings);
+        nextEl.textContent = `Next: ${name} @ ${formatTime(time)}`;
+        const now = new Date();
+        const diff = time - now;
+        const clamp = Math.max(0, diff);
+        const hh = String(Math.floor(clamp / 3600000)).padStart(2, "0");
+        const mm = String(Math.floor((clamp % 3600000) / 60000)).padStart(
+          2,
+          "0"
+        );
+        const ss = String(Math.floor((clamp % 60000) / 1000)).padStart(2, "0");
+        countdownEl.textContent = `${hh}:${mm}:${ss}`;
+
+        // Alarm when exactly hits (with 1s tolerance)
+        if (diff <= 1000 && diff >= -1000) {
+          const enabled = !!alarmPrefs[name];
+          if (enabled) {
+            try {
+              playBeep();
+              if (Notification && Notification.permission === "granted") {
+                new Notification("Prayer time", {
+                  body: `${name} time has started.`,
+                });
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+        }
+      }
+
+      if (window.Notification && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+      }
+
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    } catch (e) {
+      metaEl.textContent = "Loading prayer times…";
+      try {
+        // Fallback: try weather city again, then Makkah
+        let data;
+        if (WEATHER_CITY) {
+          data = await fetchPrayerTimesByCity(WEATHER_CITY, WEATHER_COUNTRY);
+        } else if (WEATHER_COORDS) {
+          data = await fetchPrayerTimesByCoords(
+            WEATHER_COORDS.lat,
+            WEATHER_COORDS.lon
+          );
+        } else {
+          data = await fetchPrayerTimesByCoords(21.3891, 39.8579);
+        }
+        const timings = data.timings;
+        const prefsObj = await storageGet(STORAGE_KEY_ALARMS);
+        const alarmPrefs = prefsObj[STORAGE_KEY_ALARMS] || {};
+        renderList(timings, alarmPrefs);
+        function updateCountdownFallback() {
+          const { name, time } = getNextPrayer(timings);
+          nextEl.textContent = `Next: ${name} @ ${formatTime(time)}`;
+          const now = new Date();
+          const diff = time - now;
+          const clamp = Math.max(0, diff);
+          const hh = String(Math.floor(clamp / 3600000)).padStart(2, "0");
+          const mm = String(Math.floor((clamp % 3600000) / 60000)).padStart(
+            2,
+            "0"
+          );
+          const ss = String(Math.floor((clamp % 60000) / 1000)).padStart(
+            2,
+            "0"
+          );
+          countdownEl.textContent = `${hh}:${mm}:${ss}`;
+        }
+        updateCountdownFallback();
+        setInterval(updateCountdownFallback, 1000);
+      } catch (err) {
+        listEl.innerHTML = "<li>Unable to load timings</li>";
+      }
+    }
+  }
+
+  window.requestAnimationFrame(() => {
+    void init();
+  });
+
+  // React to weather city/coords updates
+  window.addEventListener("weatherLocationUpdated", async () => {
+    try {
+      const data = WEATHER_COORDS
+        ? await fetchPrayerTimesByCoords(WEATHER_COORDS.lat, WEATHER_COORDS.lon)
+        : WEATHER_CITY
+        ? await fetchPrayerTimesByCity(WEATHER_CITY, WEATHER_COUNTRY)
+        : null;
+      if (!data) return;
+      const timings = data.timings;
+      const prefsObj = await storageGet(STORAGE_KEY_ALARMS);
+      const alarmPrefs = prefsObj[STORAGE_KEY_ALARMS] || {};
+      renderList(timings, alarmPrefs);
+    } catch (_) {}
   });
 })();
